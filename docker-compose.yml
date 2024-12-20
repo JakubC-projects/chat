@@ -1,0 +1,52 @@
+services:
+  nginx:
+    build: 
+      context: nginx
+      dockerfile: dockerfile
+    ports:
+      - "3000:3000"
+    develop:
+      watch:
+        - path: ./nginx/nginx.conf
+          target: /etc/nginx/nginx.conf
+          action: sync+restart
+  server:
+    build: 
+      context: .
+      dockerfile: dev.dockerfile
+    environment:
+      PORT: 3001
+      DB_CONN_STRING: "postgres://admin:password@database:5432/chats_local?sslmode=disable"
+    ports:
+      - 3001:3001
+    depends_on:
+      - database
+    develop:
+      watch:
+        - path: chat
+          target: /build/chat
+          action: sync+restart
+  ui:
+    build:
+      context: ui
+      dockerfile: dev.dockerfile
+    ports:
+      - 5173:5173
+    develop:
+      watch:
+        - path: ui/src
+          target: /build/src
+          action: sync
+        - path: ui/package.json
+          target: /build/package.json
+          action: rebuild
+  database:
+    image: postgres
+    ports:
+      - "3010:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: chats_local
+    volumes:
+      - ./sqlc/schema.sql:/docker-entrypoint-initdb.d/schema.sql
